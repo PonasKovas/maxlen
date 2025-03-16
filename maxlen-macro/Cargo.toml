@@ -6,7 +6,7 @@ license = "MIT"
 description = "Length-bounded string and slice/vector"
 repository = "https://github.com/PonasKovas/maxlen"
 readme = "../README.md"
-include = ["../src/encoding/"]
+include = ["/src", "../src/encoding/"]
 
 [lib]
 proc-macro = true
