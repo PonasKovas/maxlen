@@ -127,8 +127,8 @@ impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&mut BV
 	}
 }
 
-// Trait implementations mirroring standard str
-///////////////////////////////////////////////
+// Trait implementations mirroring standard slice
+/////////////////////////////////////////////////
 
 impl<'a, T, const MAX: usize> TryFrom<&'a [T]> for &'a BSlice<T, MAX> {
 	type Error = LengthExceeded;
@@ -385,54 +385,54 @@ impl<'a, T, const MAX: usize> IntoIterator for &'a mut Box<BSlice<T, MAX>> {
 		(&mut **self).into_iter()
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<BSlice<U, MAX2>>
 	for BSlice<T, MAX1>
 {
-	fn eq(&self, other: &BSlice<T, MAX2>) -> bool {
-		self.eq(&**other)
+	fn eq(&self, other: &BSlice<U, MAX2>) -> bool {
+		(**self).eq(&**other)
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<&BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&BSlice<U, MAX2>>
 	for BSlice<T, MAX1>
 {
-	fn eq(&self, other: &&BSlice<T, MAX2>) -> bool {
-		self.eq(&***other)
+	fn eq(&self, other: &&BSlice<U, MAX2>) -> bool {
+		(**self).eq(&***other)
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<&mut BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&mut BSlice<U, MAX2>>
 	for BSlice<T, MAX1>
 {
-	fn eq(&self, other: &&mut BSlice<T, MAX2>) -> bool {
-		self.eq(&***other)
+	fn eq(&self, other: &&mut BSlice<U, MAX2>) -> bool {
+		(**self).eq(&***other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<BSlice<T, MAX>> for [T] {
-	fn eq(&self, other: &BSlice<T, MAX>) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<BSlice<U, MAX>> for [T] {
+	fn eq(&self, other: &BSlice<U, MAX>) -> bool {
 		self.eq(&**other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<&BSlice<T, MAX>> for [T] {
-	fn eq(&self, other: &&BSlice<T, MAX>) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<&BSlice<U, MAX>> for [T] {
+	fn eq(&self, other: &&BSlice<U, MAX>) -> bool {
 		self.eq(&**other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<&mut BSlice<T, MAX>> for [T] {
-	fn eq(&self, other: &&mut BSlice<T, MAX>) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<&mut BSlice<U, MAX>> for [T] {
+	fn eq(&self, other: &&mut BSlice<U, MAX>) -> bool {
 		self.eq(&**other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<[T]> for BSlice<T, MAX> {
-	fn eq(&self, other: &[T]) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for BSlice<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
 		(**self).eq(other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<[T]> for &BSlice<T, MAX> {
-	fn eq(&self, other: &[T]) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for &BSlice<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
 		(**self).eq(other)
 	}
 }
-impl<T: PartialEq, const MAX: usize> PartialEq<[T]> for &mut BSlice<T, MAX> {
-	fn eq(&self, other: &[T]) -> bool {
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for &mut BSlice<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
 		(**self).eq(other)
 	}
 }

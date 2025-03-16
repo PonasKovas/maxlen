@@ -1,6 +1,8 @@
 use std::{
-	borrow::Borrow,
+	borrow::{Borrow, BorrowMut, Cow},
 	ops::{Deref, DerefMut, RangeBounds},
+	rc::Rc,
+	sync::Arc,
 };
 
 use crate::{BSlice, LengthExceeded, const_checks};
@@ -37,6 +39,10 @@ impl<T, const MAX: usize> BVec<T, MAX> {
 	/// Gives the inner [`Vec<T>`].
 	pub fn into_inner(self) -> Vec<T> {
 		self.s
+	}
+	/// Gives an immutable reference to the inner `Vec<T>`.
+	pub const fn as_vec(&self) -> &Vec<T> {
+		&self.s
 	}
 	/// Relaxes the `MAX` bound, converting to a type with a bigger one.
 	///
@@ -276,7 +282,7 @@ impl<T: PartialEq, const MAX: usize> BVec<T, MAX> {
 	}
 }
 
-// Trait implementations relating BStr and BString
+// Trait implementations relating BSlice and BVec
 //////////////////////////////////////////////////
 
 impl<T, const MAX: usize> Deref for BVec<T, MAX> {
@@ -293,7 +299,12 @@ impl<T, const MAX: usize> DerefMut for BVec<T, MAX> {
 }
 impl<T, const MAX: usize> Borrow<BSlice<T, MAX>> for BVec<T, MAX> {
 	fn borrow(&self) -> &BSlice<T, MAX> {
-		&**self
+		self
+	}
+}
+impl<T, const MAX: usize> BorrowMut<BSlice<T, MAX>> for BVec<T, MAX> {
+	fn borrow_mut(&mut self) -> &mut BSlice<T, MAX> {
+		self
 	}
 }
 impl<T, const MAX: usize> AsRef<BSlice<T, MAX>> for BVec<T, MAX> {
@@ -301,34 +312,377 @@ impl<T, const MAX: usize> AsRef<BSlice<T, MAX>> for BVec<T, MAX> {
 		self
 	}
 }
-impl<T: Clone, const MAX: usize> From<BVec<T, MAX>> for Box<BSlice<T, MAX>> {
+impl<T, const MAX: usize> AsMut<BSlice<T, MAX>> for BVec<T, MAX> {
+	fn as_mut(&mut self) -> &mut BSlice<T, MAX> {
+		self
+	}
+}
+impl<T, const MAX: usize> From<BVec<T, MAX>> for Box<BSlice<T, MAX>> {
 	fn from(value: BVec<T, MAX>) -> Self {
 		let b = Box::<[T]>::from(value.s);
 
 		unsafe { Box::from_raw(Box::into_raw(b) as *mut BSlice<T, MAX>) }
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<BSlice<U, MAX2>>
 	for BVec<T, MAX1>
 {
-	fn eq(&self, other: &BSlice<T, MAX2>) -> bool {
+	fn eq(&self, other: &BSlice<U, MAX2>) -> bool {
 		(***self).eq(&**other)
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<&BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&BSlice<U, MAX2>>
 	for BVec<T, MAX1>
 {
-	fn eq(&self, other: &&BSlice<T, MAX2>) -> bool {
+	fn eq(&self, other: &&BSlice<U, MAX2>) -> bool {
 		(***self).eq(&***other)
 	}
 }
-impl<T: PartialEq, const MAX1: usize, const MAX2: usize> PartialEq<&mut BSlice<T, MAX2>>
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&mut BSlice<U, MAX2>>
 	for BVec<T, MAX1>
 {
-	fn eq(&self, other: &&mut BSlice<T, MAX2>) -> bool {
+	fn eq(&self, other: &&mut BSlice<U, MAX2>) -> bool {
 		(***self).eq(&***other)
 	}
 }
 
-// Trait implementations mirroring standard String
-//////////////////////////////////////////////////
+// Trait implementations mirroring standard Vec
+///////////////////////////////////////////////
+
+impl<T, const MAX: usize> AsRef<BVec<T, MAX>> for BVec<T, MAX> {
+	fn as_ref(&self) -> &BVec<T, MAX> {
+		self
+	}
+}
+impl<T, const MAX: usize> AsRef<Vec<T>> for BVec<T, MAX> {
+	fn as_ref(&self) -> &Vec<T> {
+		&self.s
+	}
+}
+impl<T, const MAX: usize> AsMut<BVec<T, MAX>> for BVec<T, MAX> {
+	fn as_mut(&mut self) -> &mut BVec<T, MAX> {
+		self
+	}
+}
+impl<T, const MAX: usize> AsRef<[T]> for BVec<T, MAX> {
+	fn as_ref(&self) -> &[T] {
+		self
+	}
+}
+impl<T, const MAX: usize> AsMut<[T]> for BVec<T, MAX> {
+	fn as_mut(&mut self) -> &mut [T] {
+		self
+	}
+}
+impl<T, const MAX: usize> Borrow<[T]> for BVec<T, MAX> {
+	fn borrow(&self) -> &[T] {
+		self
+	}
+}
+impl<T, const MAX: usize> BorrowMut<[T]> for BVec<T, MAX> {
+	fn borrow_mut(&mut self) -> &mut [T] {
+		self
+	}
+}
+impl<T: Clone, const MAX: usize> Clone for BVec<T, MAX> {
+	fn clone(&self) -> Self {
+		Self { s: self.s.clone() }
+	}
+}
+impl<'a, T: Clone, const MAX: usize> From<&'a BVec<T, MAX>> for Cow<'a, BSlice<T, MAX>> {
+	fn from(value: &'a BVec<T, MAX>) -> Self {
+		Self::Borrowed(value)
+	}
+}
+impl<T: Clone, const MAX: usize> From<BVec<T, MAX>> for Cow<'_, BSlice<T, MAX>> {
+	fn from(value: BVec<T, MAX>) -> Self {
+		Self::Owned(value)
+	}
+}
+impl<const MAX: usize> From<BVec<std::num::NonZero<u8>, MAX>> for std::ffi::CString {
+	fn from(value: BVec<std::num::NonZero<u8>, MAX>) -> Self {
+		value.s.into()
+	}
+}
+impl<T, const MAX: usize> From<BVec<T, MAX>> for Arc<BSlice<T, MAX>> {
+	fn from(value: BVec<T, MAX>) -> Self {
+		unsafe { Arc::from_raw(Arc::into_raw(Arc::<[T]>::from(value.s)) as *const BSlice<T, MAX>) }
+	}
+}
+impl<T: Ord, const MAX: usize> From<BVec<T, MAX>> for std::collections::BinaryHeap<T> {
+	fn from(value: BVec<T, MAX>) -> Self {
+		value.s.into()
+	}
+}
+impl<T, const MAX: usize> From<BVec<T, MAX>> for Rc<BSlice<T, MAX>> {
+	fn from(value: BVec<T, MAX>) -> Self {
+		unsafe { Rc::from_raw(Rc::into_raw(Rc::<[T]>::from(value.s)) as *const BSlice<T, MAX>) }
+	}
+}
+impl<T, const MAX: usize> From<BVec<T, MAX>> for std::collections::VecDeque<T> {
+	fn from(value: BVec<T, MAX>) -> Self {
+		value.s.into()
+	}
+}
+impl<T, const MAX: usize> IntoIterator for BVec<T, MAX> {
+	type Item = T;
+	type IntoIter = <Vec<T> as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		self.s.into_iter()
+	}
+}
+impl<'a, T, const MAX: usize> IntoIterator for &'a BVec<T, MAX> {
+	type Item = &'a T;
+	type IntoIter = <&'a Vec<T> as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		(&self.s).into_iter()
+	}
+}
+impl<'a, T, const MAX: usize> IntoIterator for &'a mut BVec<T, MAX> {
+	type Item = &'a mut T;
+	type IntoIter = <&'a mut Vec<T> as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		(&mut self.s).into_iter()
+	}
+}
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<BVec<U, MAX2>>
+	for BVec<T, MAX1>
+{
+	fn eq(&self, other: &BVec<U, MAX2>) -> bool {
+		(***self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&BVec<U, MAX2>>
+	for BVec<T, MAX1>
+{
+	fn eq(&self, other: &&BVec<U, MAX2>) -> bool {
+		(***self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX1: usize, const MAX2: usize> PartialEq<&mut BVec<U, MAX2>>
+	for BVec<T, MAX1>
+{
+	fn eq(&self, other: &&mut BVec<U, MAX2>) -> bool {
+		(***self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for BVec<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for &BVec<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<[U]> for &mut BVec<T, MAX> {
+	fn eq(&self, other: &[U]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<BVec<T, MAX>> for [U] {
+	fn eq(&self, other: &BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<&BVec<T, MAX>> for [U] {
+	fn eq(&self, other: &&BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<&mut BVec<T, MAX>> for [U] {
+	fn eq(&self, other: &&mut BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize, const N: usize> PartialEq<[U; N]> for BVec<T, MAX> {
+	fn eq(&self, other: &[U; N]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize, const N: usize> PartialEq<[U; N]> for &BVec<T, MAX> {
+	fn eq(&self, other: &[U; N]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize, const N: usize> PartialEq<[U; N]> for &mut BVec<T, MAX> {
+	fn eq(&self, other: &[U; N]) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize, const N: usize> PartialEq<BVec<T, MAX>> for [U; N] {
+	fn eq(&self, other: &BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize, const N: usize> PartialEq<&BVec<T, MAX>> for [U; N] {
+	fn eq(&self, other: &&BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize, const N: usize> PartialEq<&mut BVec<T, MAX>> for [U; N] {
+	fn eq(&self, other: &&mut BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<Vec<U>> for BVec<T, MAX> {
+	fn eq(&self, other: &Vec<U>) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<Vec<U>> for &BVec<T, MAX> {
+	fn eq(&self, other: &Vec<U>) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T: PartialEq<U>, U, const MAX: usize> PartialEq<Vec<U>> for &mut BVec<T, MAX> {
+	fn eq(&self, other: &Vec<U>) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<BVec<T, MAX>> for Vec<U> {
+	fn eq(&self, other: &BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<&BVec<T, MAX>> for Vec<U> {
+	fn eq(&self, other: &&BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T>, const MAX: usize> PartialEq<&mut BVec<T, MAX>> for Vec<U> {
+	fn eq(&self, other: &&mut BVec<T, MAX>) -> bool {
+		self.eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize> PartialEq<Cow<'_, [U]>> for BVec<T, MAX> {
+	fn eq(&self, other: &Cow<'_, [U]>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize> PartialEq<Cow<'_, [U]>> for &BVec<T, MAX> {
+	fn eq(&self, other: &Cow<'_, [U]>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize> PartialEq<Cow<'_, [U]>> for &mut BVec<T, MAX> {
+	fn eq(&self, other: &Cow<'_, [U]>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize> PartialEq<BVec<T, MAX>> for Cow<'_, [U]> {
+	fn eq(&self, other: &BVec<T, MAX>) -> bool {
+		(**self).eq(&***other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize> PartialEq<&BVec<T, MAX>> for Cow<'_, [U]> {
+	fn eq(&self, other: &&BVec<T, MAX>) -> bool {
+		(**self).eq(&***other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize> PartialEq<&mut BVec<T, MAX>> for Cow<'_, [U]> {
+	fn eq(&self, other: &&mut BVec<T, MAX>) -> bool {
+		(**self).eq(&***other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize, const MAX2: usize>
+	PartialEq<Cow<'_, BSlice<U, MAX2>>> for BVec<T, MAX>
+{
+	fn eq(&self, other: &Cow<'_, BSlice<U, MAX2>>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize, const MAX2: usize>
+	PartialEq<Cow<'_, BSlice<U, MAX2>>> for &BVec<T, MAX>
+{
+	fn eq(&self, other: &Cow<'_, BSlice<U, MAX2>>) -> bool {
+		(**self).eq(&***other)
+	}
+}
+impl<T: PartialEq<U>, U: Clone, const MAX: usize, const MAX2: usize>
+	PartialEq<Cow<'_, BSlice<U, MAX2>>> for &mut BVec<T, MAX>
+{
+	fn eq(&self, other: &Cow<'_, BSlice<U, MAX2>>) -> bool {
+		(**self).eq(&***other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize, const MAX2: usize> PartialEq<BVec<T, MAX>>
+	for Cow<'_, BSlice<U, MAX2>>
+{
+	fn eq(&self, other: &BVec<T, MAX>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize, const MAX2: usize> PartialEq<&BVec<T, MAX>>
+	for Cow<'_, BSlice<U, MAX2>>
+{
+	fn eq(&self, other: &&BVec<T, MAX>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T, U: PartialEq<T> + Clone, const MAX: usize, const MAX2: usize> PartialEq<&mut BVec<T, MAX>>
+	for Cow<'_, BSlice<U, MAX2>>
+{
+	fn eq(&self, other: &&mut BVec<T, MAX>) -> bool {
+		(**self).eq(&**other)
+	}
+}
+impl<T: Eq, const MAX: usize> Eq for BVec<T, MAX> {}
+impl<T: PartialOrd, const MAX: usize, const MAX2: usize> PartialOrd<BVec<T, MAX2>>
+	for BVec<T, MAX>
+{
+	fn partial_cmp(&self, other: &BVec<T, MAX2>) -> Option<std::cmp::Ordering> {
+		(**self).partial_cmp(other)
+	}
+}
+impl<T: Ord, const MAX: usize> Ord for BVec<T, MAX> {
+	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+		(**self).cmp(other)
+	}
+}
+impl<T, const MAX: usize> TryFrom<Vec<T>> for BVec<T, MAX> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: Vec<T>) -> Result<Self, Self::Error> {
+		Self::from_vec(value)
+	}
+}
+impl<T: Clone, const MAX: usize> TryFrom<&[T]> for BVec<T, MAX> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: &[T]) -> Result<Self, Self::Error> {
+		Self::from_slice(value)
+	}
+}
+impl<T: Clone, const MAX: usize> TryFrom<&mut [T]> for BVec<T, MAX> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: &mut [T]) -> Result<Self, Self::Error> {
+		Self::from_slice(value)
+	}
+}
+impl<T, const MAX: usize, const N: usize> TryFrom<BVec<T, MAX>> for [T; N] {
+	type Error = BVec<T, MAX>;
+
+	fn try_from(value: BVec<T, MAX>) -> Result<Self, Self::Error> {
+		<[T; N]>::try_from(value.s).map_err(|v| unsafe { BVec::from_vec_unchecked(v) })
+	}
+}
+impl<T, const MAX: usize, const N: usize> TryFrom<BVec<T, MAX>> for Box<[T; N]> {
+	type Error = BVec<T, MAX>;
+
+	fn try_from(value: BVec<T, MAX>) -> Result<Self, Self::Error> {
+		Box::<[T; N]>::try_from(value.s).map_err(|v| unsafe { BVec::from_vec_unchecked(v) })
+	}
+}
+impl<const MAX: usize> TryFrom<BVec<u8, MAX>> for String {
+	type Error = std::string::FromUtf8Error;
+
+	fn try_from(value: BVec<u8, MAX>) -> Result<Self, Self::Error> {
+		String::try_from(value.s)
+	}
+}
