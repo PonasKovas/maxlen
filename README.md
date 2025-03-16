@@ -1,5 +1,8 @@
 # maxlen
 
+[![crates.io](https://img.shields.io/crates/v/maxlen)](https://crates.io/crates/maxlen)
+[![docs.rs](https://img.shields.io/docsrs/maxlen)](https://docs.rs/maxlen/)
+
 Length-bounded wrappers over standard types.
 
 This crate provides several types that enforce length limits at the type level:

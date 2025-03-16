@@ -5,7 +5,7 @@ edition = "2024"
 license = "MIT"
 description = "Length-bounded string and slice/vector"
 repository = "https://github.com/PonasKovas/maxlen"
-readme = "README.md"
+readme = "../README.md"
 
 [lib]
 proc-macro = true
