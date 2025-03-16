@@ -4,7 +4,9 @@ mod bstring;
 mod bvec;
 mod error;
 
-mod const_checks;
+/// For macro usage
+#[doc(hidden)]
+pub mod const_checks;
 /// Different string encodings
 pub mod encoding;
 

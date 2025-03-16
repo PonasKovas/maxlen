@@ -1,3 +1,4 @@
+use crate::{BVec, LengthExceeded, const_checks};
 use std::{
 	borrow::{Borrow, BorrowMut, Cow},
 	collections::VecDeque,
@@ -11,8 +12,6 @@ use std::{
 	sync::Arc,
 };
 
-use crate::{BVec, LengthExceeded, const_checks};
-
 /// Bounded [`[T]`][slice].
 ///
 /// Guaranteed to not be longer than `MAX` elements .
@@ -20,6 +19,29 @@ use crate::{BVec, LengthExceeded, const_checks};
 #[repr(transparent)]
 pub struct BSlice<T, const MAX: usize> {
 	s: [T],
+}
+
+/// Creates a static `&'static BSlice<T, MAX>` with a compile-time check.
+///
+/// ```
+/// # use maxlen::{bslice, BSlice};
+/// let _: &BSlice<u8, 255> = bslice![];
+/// let _: &BSlice<_, 255> = bslice![0; 20];
+/// let _: &BSlice<_, 255> = bslice![0, 1, 2, 3, 4];
+///
+/// // let _: &BSlice<_, 1> = bslice![0; 2]; // will not compile
+/// ```
+#[macro_export]
+macro_rules! bslice {
+	() => {
+		unsafe { $crate::BSlice::from_slice_unchecked(&[]) }
+	};
+	($elem:expr; $n:expr) => {
+		$crate::BSlice::from_array(&[$elem; $n])
+	};
+	($($x:expr),+ $(,)?) => {
+		$crate::BSlice::from_array(&[$($x),+])
+	};
 }
 
 impl<T, const MAX: usize> BSlice<T, MAX> {
@@ -48,6 +70,20 @@ impl<T, const MAX: usize> BSlice<T, MAX> {
 		}
 
 		Ok(unsafe { Self::from_slice_mut_unchecked(s) })
+	}
+	/// Constructs a `&BSlice<T, MAX>` from a `&[T; N]` using a compile-time check
+	pub const fn from_array<const N: usize>(v: &[T; N]) -> &BSlice<T, MAX> {
+		// compile time check
+		_ = <const_checks::Pair<MAX, N> as const_checks::AssertGe>::VALID;
+
+		unsafe { BSlice::from_slice_unchecked(v) }
+	}
+	/// Constructs a `&mut BSlice<T, MAX>` from a `&mut [T; N]` using a compile-time check
+	pub const fn from_array_mut<const N: usize>(v: &mut [T; N]) -> &mut BSlice<T, MAX> {
+		// compile time check
+		_ = <const_checks::Pair<MAX, N> as const_checks::AssertGe>::VALID;
+
+		unsafe { BSlice::from_slice_mut_unchecked(v) }
 	}
 	/// Relaxes the `MAX` bound, converting to a type with a bigger one.
 	///
@@ -656,4 +692,18 @@ fn convert_mut_mut<'a, 'b, T, const MAX: usize>(
 	v: &'a mut &'b mut BSlice<T, MAX>,
 ) -> &'a mut &'b mut [T] {
 	unsafe { transmute(v) }
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::*;
+
+	#[test]
+	fn test_bslice_macro() {
+		let _: &BSlice<u8, 255> = bslice![];
+		let _: &BSlice<_, 255> = bslice![0; 20];
+		// let _: &BSlice<_, 1> = bslice![0; 2]; // should fail
+		let _: &BSlice<_, 255> = bslice![0, 1, 2, 3, 4];
+		// let _: &BSlice<_, 3> = bslice![0, 1, 2, 3, 4]; // should fail
+	}
 }

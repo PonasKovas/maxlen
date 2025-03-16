@@ -15,6 +15,59 @@ pub struct BVec<T, const MAX: usize> {
 	s: Vec<T>,
 }
 
+/// Creates a `BVec<T, MAX>` with a compile-time check.
+///
+/// ```
+/// # use maxlen::{bvec, BVec};
+/// let _: BVec<u8, 255> = bvec![];
+/// let _: BVec<_, 255> = bvec![0; 20];
+/// let _: BVec<_, 255> = bvec![0, 1, 2, 3, 4];
+///
+/// // let _: BVec<_, 1> = bvec![0; 2]; // will not compile
+/// ```
+#[macro_export]
+macro_rules! bvec {
+	() => {
+		$crate::BVec::new()
+	};
+	($elem:expr; $n:expr) => {{
+		// helper struct/method to infer MAX for the compile-time check
+		// the reason why we use a whole struct instead of just a function
+		// is to separate the MAX and N const generics, because otherwise we cant
+		// write one and infer the other (YET! https://github.com/rust-lang/rust/issues/85077)
+		// so we have to separate them. Clever workaround!
+		struct _Helper<const N: usize>;
+		impl<const N: usize> _Helper<N> {
+			fn _helper<T, const MAX: usize>(s: ::std::vec::Vec<T>) -> $crate::BVec<T, MAX> {
+				// compile time check
+				_ = <$crate::const_checks::Pair<MAX, N> as $crate::const_checks::AssertGe>::VALID;
+
+				unsafe { $crate::BVec::from_vec_unchecked(s) }
+			}
+		}
+		_Helper::<$n>::_helper(::std::vec![$elem; $n])
+	}};
+	($($x:expr),+ $(,)?) => {{
+		// helper struct/method to infer MAX for the compile-time check
+		// the reason why we use a whole struct instead of just a function
+		// is to separate the MAX and N const generics, because otherwise we cant
+		// write one and infer the other (YET! https://github.com/rust-lang/rust/issues/85077)
+		// so we have to separate them. Clever workaround!
+		struct _Helper<const N: usize>;
+		impl<const N: usize> _Helper<N> {
+			fn _helper<T, const MAX: usize>(s: ::std::vec::Vec<T>) -> $crate::BVec<T, MAX> {
+				// compile time check
+				_ = <$crate::const_checks::Pair<MAX, N> as $crate::const_checks::AssertGe>::VALID;
+
+				unsafe { $crate::BVec::from_vec_unchecked(s) }
+			}
+		}
+		// another banger workaround to get the number of repetitions as a const
+		const _N: usize = 0 $( + { let _ = $x; 1 })*;
+		_Helper::<_N>::_helper(::std::vec![$($x),+])
+	}};
+}
+
 impl<T, const MAX: usize> BVec<T, MAX> {
 	pub unsafe fn from_vec_unchecked(s: Vec<T>) -> Self {
 		Self { s }
@@ -684,5 +737,19 @@ impl<const MAX: usize> TryFrom<BVec<u8, MAX>> for String {
 
 	fn try_from(value: BVec<u8, MAX>) -> Result<Self, Self::Error> {
 		String::try_from(value.s)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::*;
+
+	#[test]
+	fn test_bvec_macro() {
+		let _: BVec<u8, 255> = bvec![];
+		let _: BVec<_, 255> = bvec![0; 20];
+		// let _: BVec<_, 1> = bvec![0; 2]; // should fail
+		let _: BVec<_, 255> = bvec![0, 1, 2, 3, 4];
+		// let _: BVec<_, 3> = bvec![0, 1, 2, 3, 4]; // should fail
 	}
 }
