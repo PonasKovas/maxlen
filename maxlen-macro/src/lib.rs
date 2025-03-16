@@ -9,7 +9,6 @@ use syn::{
 	parse_macro_input,
 };
 
-#[path = "../../src/encoding/mod.rs"]
 mod encoding;
 
 struct BStrInput {
