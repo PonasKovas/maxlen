@@ -11,4 +11,4 @@ readme = "README.md"
 
 [dependencies]
 thiserror = "1.0"
-maxlen-macro = { path = "maxlen-macro" }
+maxlen-macro = "0.1"

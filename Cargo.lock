@@ -13,6 +13,8 @@ dependencies = [
 [[package]]
 name = "maxlen-macro"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a737c62b152c613fc52b7a2c0a7735dbb0034462d1db147d08b88ab045ccc77"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
