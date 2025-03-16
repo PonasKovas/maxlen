@@ -25,21 +25,35 @@ pub struct BString<const MAX: usize, E = Utf8> {
 }
 
 impl<E: Encoding, const MAX: usize> BString<MAX, E> {
+	/// Creates a `BString<MAX, E>` from a `String` without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the string is definitely
+	/// not longer than `MAX` bytes in the given encoding.
 	pub const unsafe fn from_string_unchecked(s: String) -> Self {
 		Self {
 			s,
 			phantom: PhantomData,
 		}
 	}
+	/// Creates a `BString<MAX, E>` from a `&str` without any checks, allocating a new buffer.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the string is definitely
+	/// not longer than `MAX` bytes in the given encoding.
 	pub unsafe fn from_str_unchecked(s: &str) -> Self {
 		Self {
 			s: s.to_owned(),
 			phantom: PhantomData,
 		}
 	}
+	/// Creates a `BString<MAX, E>` from a `&str`, performing a runtime check and allocating a new buffer.
 	pub fn from_str(s: &str) -> Result<Self, LengthExceeded> {
 		BStr::from_str(s).map(|s| s.to_owned())
 	}
+	/// Creates a `BString<MAX, E>` from a `String`, performing a runtime check.
 	pub fn from_string(s: String) -> Result<Self, LengthExceeded> {
 		BStr::<MAX, E>::from_str(&s)?;
 

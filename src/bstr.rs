@@ -28,12 +28,25 @@ pub struct BStr<const MAX: usize, E = Utf8> {
 }
 
 impl<E: Encoding, const MAX: usize> BStr<MAX, E> {
+	/// Creates a `&BStr<MAX, E>` from a `&str` without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the string is definitely
+	/// not longer than `MAX` bytes in the given encoding.
 	pub const unsafe fn from_str_unchecked(s: &str) -> &Self {
 		unsafe { std::mem::transmute(s) }
 	}
+	/// Creates a `&mut BStr<MAX, E>` from a `&mut str` without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the string is definitely
+	/// not longer than `MAX` bytes in the given encoding.
 	pub const unsafe fn from_str_mut_unchecked(s: &mut str) -> &mut Self {
 		unsafe { std::mem::transmute(s) }
 	}
+	/// Creates a `&BStr<MAX, E>` from a `&str`, performing a runtime check.
 	pub fn from_str(s: &str) -> Result<&Self, LengthExceeded> {
 		let length = E::length(s);
 		if length > MAX {
@@ -45,6 +58,7 @@ impl<E: Encoding, const MAX: usize> BStr<MAX, E> {
 
 		Ok(unsafe { Self::from_str_unchecked(s) })
 	}
+	/// Creates a `&mut BStr<MAX, E>` from a `&mut str`, performing a runtime check.
 	pub fn from_str_mut(s: &mut str) -> Result<&mut Self, LengthExceeded> {
 		let length = E::length(s);
 		if length > MAX {

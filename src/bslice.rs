@@ -45,12 +45,23 @@ macro_rules! bslice {
 }
 
 impl<T, const MAX: usize> BSlice<T, MAX> {
+	/// Creates a `&BSlice<T, MAX>` from a slice without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the slice is definitely not longer than `MAX` elements.
 	pub const unsafe fn from_slice_unchecked(s: &[T]) -> &Self {
 		unsafe { std::mem::transmute(s) }
 	}
+	/// Creates a `&mut BSlice<T, MAX>` from a mutable slice without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the slice is definitely not longer than `MAX` elements.
 	pub const unsafe fn from_slice_mut_unchecked(s: &mut [T]) -> &mut Self {
 		unsafe { std::mem::transmute(s) }
 	}
+	/// Creates a `&BSlice<T, MAX>` from a slice, performing a runtime check.
 	pub fn from_slice(s: &[T]) -> Result<&Self, LengthExceeded> {
 		if s.len() > MAX {
 			return Err(LengthExceeded {
@@ -61,6 +72,7 @@ impl<T, const MAX: usize> BSlice<T, MAX> {
 
 		Ok(unsafe { Self::from_slice_unchecked(s) })
 	}
+	/// Creates a `&mut BSlice<T, MAX>` from a mutable slice, performing a runtime check.
 	pub fn from_slice_mut(s: &mut [T]) -> Result<&mut Self, LengthExceeded> {
 		if s.len() > MAX {
 			return Err(LengthExceeded {

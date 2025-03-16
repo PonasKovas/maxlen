@@ -69,21 +69,33 @@ macro_rules! bvec {
 }
 
 impl<T, const MAX: usize> BVec<T, MAX> {
-	pub unsafe fn from_vec_unchecked(s: Vec<T>) -> Self {
+	/// Creates a `BVec<T, MAX>` from a `Vec<T>` without any checks.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the vector is definitely not longer than `MAX` elements.
+	pub const unsafe fn from_vec_unchecked(s: Vec<T>) -> Self {
 		Self { s }
 	}
+	/// Creates a `BVec<T, MAX>` from a slice without any checks, allocating a new buffer.
+	///
+	/// # Safety
+	///
+	/// The caller is responsible for making sure that the slice is definitely not longer than `MAX` elements.
 	pub unsafe fn from_slice_unchecked(s: &[T]) -> Self
 	where
 		T: Clone,
 	{
 		Self { s: s.to_owned() }
 	}
+	/// Creates a `BVec<T, MAX>` from a slice, performing a runtime check and allocating a new buffer.
 	pub fn from_slice(s: &[T]) -> Result<Self, LengthExceeded>
 	where
 		T: Clone,
 	{
 		BSlice::from_slice(s).map(|s| s.to_owned())
 	}
+	/// Creates a `BVec<T, MAX>` from a `Vec<T>`, performing a runtime check.
 	pub fn from_vec(s: Vec<T>) -> Result<Self, LengthExceeded> {
 		BSlice::<T, MAX>::from_slice(&s)?;
 
