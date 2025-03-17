@@ -311,6 +311,16 @@ impl<E: Encoding, const MAX: usize> Extend<BString<MAX, E>> for String {
 		}
 	}
 }
+impl<'a, E: Encoding, const MAX: usize> From<BString<MAX, E>> for Cow<'a, BStr<MAX, E>> {
+	fn from(value: BString<MAX, E>) -> Self {
+		Self::Owned(value)
+	}
+}
+impl<'a, E: Encoding, const MAX: usize> From<BString<MAX, E>> for Cow<'a, str> {
+	fn from(value: BString<MAX, E>) -> Self {
+		Self::Owned(value.into_inner())
+	}
+}
 impl<'a, E: Encoding, const MAX: usize> From<&'a BString<MAX, E>> for Cow<'a, BStr<MAX, E>> {
 	fn from(value: &'a BString<MAX, E>) -> Self {
 		Self::Borrowed(value)
@@ -353,11 +363,6 @@ impl<E: Encoding, const MAX: usize> From<BString<MAX, E>>
 {
 	fn from(value: BString<MAX, E>) -> Self {
 		Self::from(&**value)
-	}
-}
-impl<E: Encoding, const MAX: usize> From<BString<MAX, E>> for Cow<'_, BStr<MAX, E>> {
-	fn from(value: BString<MAX, E>) -> Self {
-		Self::Owned(value)
 	}
 }
 impl<E: Encoding, const MAX: usize> From<BString<MAX, E>> for OsString {
@@ -466,6 +471,11 @@ impl<E: Encoding, const MAX: usize> PartialEq<&BString<MAX, E>> for str {
 		self.eq(&***other)
 	}
 }
+impl<E: Encoding, const MAX: usize> PartialEq<BString<MAX, E>> for &str {
+	fn eq(&self, other: &BString<MAX, E>) -> bool {
+		self.eq(&&***other) // tf??
+	}
+}
 impl<E: Encoding, const MAX: usize> PartialEq<str> for BString<MAX, E> {
 	fn eq(&self, other: &str) -> bool {
 		(**self).eq(other)
@@ -474,5 +484,36 @@ impl<E: Encoding, const MAX: usize> PartialEq<str> for BString<MAX, E> {
 impl<E: Encoding, const MAX: usize> PartialEq<str> for &BString<MAX, E> {
 	fn eq(&self, other: &str) -> bool {
 		(**self).eq(other)
+	}
+}
+impl<E: Encoding, const MAX: usize> PartialEq<&str> for BString<MAX, E> {
+	fn eq(&self, other: &&str) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<E: Encoding, const MAX: usize> PartialEq<&mut str> for BString<MAX, E> {
+	fn eq(&self, other: &&mut str) -> bool {
+		(**self).eq(other)
+	}
+}
+impl<E: Encoding, const MAX: usize> TryFrom<String> for BString<MAX, E> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: String) -> Result<Self, Self::Error> {
+		BString::from_string(value)
+	}
+}
+impl<E: Encoding, const MAX: usize> TryFrom<&str> for BString<MAX, E> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		BString::from_str(value)
+	}
+}
+impl<E: Encoding, const MAX: usize> TryFrom<&mut str> for BString<MAX, E> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: &mut str) -> Result<Self, Self::Error> {
+		BString::from_str(value)
 	}
 }

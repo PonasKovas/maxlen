@@ -1,6 +1,7 @@
 use super::Encoding;
 
 /// The [CESU-8](https://en.wikipedia.org/wiki/CESU-8) encoding
+#[derive(Debug, Default, Hash)]
 pub struct Cesu8;
 impl Encoding for Cesu8 {
 	fn length(s: &str) -> usize {

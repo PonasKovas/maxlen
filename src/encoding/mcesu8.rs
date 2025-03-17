@@ -1,6 +1,7 @@
 use super::Encoding;
 
 /// The [Modified CESU-8](https://en.wikipedia.org/wiki/CESU-8) encoding (same as CESU-8 but encodes `00` as `C0 80`)
+#[derive(Debug, Default, Hash)]
 pub struct MCesu8;
 impl Encoding for MCesu8 {
 	fn length(s: &str) -> usize {

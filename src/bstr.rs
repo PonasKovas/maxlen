@@ -180,6 +180,13 @@ impl<'a, E: Encoding, const MAX: usize> TryFrom<&'a str> for &'a BStr<MAX, E> {
 		BStr::from_str(value)
 	}
 }
+impl<'a, E: Encoding, const MAX: usize> TryFrom<&'a mut str> for &'a mut BStr<MAX, E> {
+	type Error = LengthExceeded;
+
+	fn try_from(value: &'a mut str) -> Result<Self, Self::Error> {
+		BStr::from_str_mut(value)
+	}
+}
 impl<E, const MAX: usize> Deref for BStr<MAX, E> {
 	type Target = str;
 
@@ -277,6 +284,16 @@ impl<'a, E: Encoding, const MAX: usize> From<&'a BStr<MAX, E>> for Cow<'a, BStr<
 	}
 }
 impl<'a, E: Encoding, const MAX: usize> From<&'a mut BStr<MAX, E>> for Cow<'a, BStr<MAX, E>> {
+	fn from(value: &'a mut BStr<MAX, E>) -> Self {
+		Self::Borrowed(value)
+	}
+}
+impl<'a, E: Encoding, const MAX: usize> From<&'a BStr<MAX, E>> for Cow<'a, str> {
+	fn from(value: &'a BStr<MAX, E>) -> Self {
+		Self::Borrowed(value)
+	}
+}
+impl<'a, E: Encoding, const MAX: usize> From<&'a mut BStr<MAX, E>> for Cow<'a, str> {
 	fn from(value: &'a mut BStr<MAX, E>) -> Self {
 		Self::Borrowed(value)
 	}
@@ -536,6 +553,16 @@ impl<E: Encoding, const MAX: usize> PartialEq<str> for BStr<MAX, E> {
 impl<E: Encoding, const MAX: usize> PartialEq<str> for &BStr<MAX, E> {
 	fn eq(&self, other: &str) -> bool {
 		(**self).eq(other)
+	}
+}
+impl<E: Encoding, const MAX: usize> PartialEq<&str> for BStr<MAX, E> {
+	fn eq(&self, other: &&str) -> bool {
+		(**self).eq(*other)
+	}
+}
+impl<E: Encoding, const MAX: usize> PartialEq<&mut str> for BStr<MAX, E> {
+	fn eq(&self, other: &&mut str) -> bool {
+		(**self).eq(*other)
 	}
 }
 impl<E: Encoding, const MAX: usize> ToSocketAddrs for BStr<MAX, E> {
