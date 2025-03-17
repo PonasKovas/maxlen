@@ -70,6 +70,10 @@ impl<E: Encoding, const MAX: usize> BStr<MAX, E> {
 
 		Ok(unsafe { Self::from_str_mut_unchecked(s) })
 	}
+	/// Creates an empty `&BStr`.
+	pub fn new<'a>() -> &'a Self {
+		Default::default()
+	}
 	/// Relaxes the `MAX` bound, converting to a type with a bigger one.
 	///
 	/// This conversion is free and does not involve any checks. It is
