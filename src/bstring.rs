@@ -517,3 +517,61 @@ impl<E: Encoding, const MAX: usize> TryFrom<&mut str> for BString<MAX, E> {
 		BString::from_str(value)
 	}
 }
+
+#[cfg(feature = "serde")]
+mod serde_impls {
+	use super::*;
+	use serde::{Deserialize, Serialize, de::Visitor};
+
+	impl<E: Encoding, const MAX: usize> Serialize for BString<MAX, E> {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: serde::Serializer,
+		{
+			serializer.serialize_str(self)
+		}
+	}
+
+	struct BStringVisitor<E: Encoding, const MAX: usize>(PhantomData<fn(E) -> E>);
+	impl<'de, E: Encoding, const MAX: usize> Visitor<'de> for BStringVisitor<E, MAX> {
+		type Value = BString<MAX, E>;
+
+		fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+			formatter.write_str("a string")
+		}
+		fn visit_str<ER>(self, v: &str) -> Result<Self::Value, ER>
+		where
+			ER: serde::de::Error,
+		{
+			match BString::from_str(v) {
+				Ok(b) => Ok(b),
+				Err(_e) => Err(serde::de::Error::invalid_length(
+					v.len(),
+					&format!("{MAX}").as_str(),
+				)),
+			}
+		}
+		fn visit_string<ER>(self, v: String) -> Result<Self::Value, ER>
+		where
+			ER: serde::de::Error,
+		{
+			let len = v.len();
+
+			match BString::from_string(v) {
+				Ok(b) => Ok(b),
+				Err(_e) => Err(serde::de::Error::invalid_length(
+					len,
+					&format!("{MAX}").as_str(),
+				)),
+			}
+		}
+	}
+	impl<'de, E: Encoding, const MAX: usize> Deserialize<'de> for BString<MAX, E> {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			deserializer.deserialize_string(BStringVisitor(PhantomData))
+		}
+	}
+}

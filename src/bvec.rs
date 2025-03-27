@@ -752,6 +752,66 @@ impl<const MAX: usize> TryFrom<BVec<u8, MAX>> for String {
 	}
 }
 
+#[cfg(feature = "serde")]
+mod serde_impls {
+	use std::marker::PhantomData;
+
+	use super::*;
+	use serde::{
+		Deserialize, Serialize,
+		de::{SeqAccess, Visitor},
+		ser::SerializeSeq,
+	};
+
+	impl<T: Serialize, const MAX: usize> Serialize for BVec<T, MAX> {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: serde::Serializer,
+		{
+			let mut seq = serializer.serialize_seq(Some(self.len()))?;
+			for e in self {
+				seq.serialize_element(e)?;
+			}
+			seq.end()
+		}
+	}
+
+	struct BVecVisitor<T, const MAX: usize>(PhantomData<fn(T) -> T>);
+	impl<'de, T: Deserialize<'de>, const MAX: usize> Visitor<'de> for BVecVisitor<T, MAX> {
+		type Value = BVec<T, MAX>;
+
+		fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+			formatter.write_str("a sequence")
+		}
+		fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+		where
+			A: SeqAccess<'de>,
+		{
+			let mut vec = Vec::new();
+			while let Some(e) = seq.next_element()? {
+				vec.push(e);
+			}
+
+			let len = vec.len();
+			match BVec::from_vec(vec) {
+				Ok(bvec) => Ok(bvec),
+				Err(_e) => Err(serde::de::Error::invalid_length(
+					len,
+					&format!("{MAX}").as_str(),
+				)),
+			}
+		}
+	}
+	impl<'de, T: Deserialize<'de>, const MAX: usize> Deserialize<'de> for BVec<T, MAX> {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			deserializer.deserialize_seq(BVecVisitor(PhantomData))
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use crate::*;

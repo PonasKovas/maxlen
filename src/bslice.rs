@@ -409,6 +409,14 @@ impl<'a, T, const MAX: usize> IntoIterator for &'a mut BSlice<T, MAX> {
 		(&mut **self).into_iter()
 	}
 }
+impl<'a, 'b, T, const MAX: usize> IntoIterator for &'b &'a BSlice<T, MAX> {
+	type Item = &'b T;
+	type IntoIter = <&'b [T] as IntoIterator>::IntoIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		(&**self).into_iter()
+	}
+}
 impl<T, const MAX: usize> IntoIterator for Box<BSlice<T, MAX>> {
 	type Item = T;
 	type IntoIter = <Box<[T]> as IntoIterator>::IntoIter;
@@ -704,6 +712,55 @@ fn convert_mut_mut<'a, 'b, T, const MAX: usize>(
 	v: &'a mut &'b mut BSlice<T, MAX>,
 ) -> &'a mut &'b mut [T] {
 	unsafe { transmute(v) }
+}
+
+#[cfg(feature = "serde")]
+mod serde_impls {
+	use super::*;
+	use serde::{Deserialize, Serialize, de::Visitor, ser::SerializeSeq};
+
+	impl<'a, T: Serialize, const MAX: usize> Serialize for &'a BSlice<T, MAX> {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: serde::Serializer,
+		{
+			let mut seq = serializer.serialize_seq(Some(self.len()))?;
+			for e in self {
+				seq.serialize_element(e)?;
+			}
+			seq.end()
+		}
+	}
+
+	// Deserialize only implemented for [u8] because its a SLICE.
+	struct BSLiceVisitor<const MAX: usize>;
+	impl<'de, const MAX: usize> Visitor<'de> for BSLiceVisitor<MAX> {
+		type Value = &'de BSlice<u8, MAX>;
+
+		fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+			formatter.write_str("a byte slice")
+		}
+		fn visit_borrowed_bytes<E>(self, v: &'de [u8]) -> Result<Self::Value, E>
+		where
+			E: serde::de::Error,
+		{
+			match BSlice::from_slice(v) {
+				Ok(b) => Ok(b),
+				Err(_e) => Err(serde::de::Error::invalid_length(
+					v.len(),
+					&format!("{MAX}").as_str(),
+				)),
+			}
+		}
+	}
+	impl<'de, const MAX: usize> Deserialize<'de> for &'de BSlice<u8, MAX> {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			deserializer.deserialize_seq(BSLiceVisitor)
+		}
+	}
 }
 
 #[cfg(test)]

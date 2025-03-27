@@ -576,3 +576,47 @@ impl<E: Encoding, const MAX: usize> ToSocketAddrs for BStr<MAX, E> {
 		(**self).to_socket_addrs()
 	}
 }
+
+#[cfg(feature = "serde")]
+mod serde_impls {
+	use super::*;
+	use serde::{Deserialize, Serialize, de::Visitor};
+
+	impl<'a, E: Encoding, const MAX: usize> Serialize for &'a BStr<MAX, E> {
+		fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+		where
+			S: serde::Serializer,
+		{
+			serializer.serialize_str(self)
+		}
+	}
+
+	struct BStrVisitor<E: Encoding, const MAX: usize>(PhantomData<fn(E) -> E>);
+	impl<'de, E: Encoding + 'de, const MAX: usize> Visitor<'de> for BStrVisitor<E, MAX> {
+		type Value = &'de BStr<MAX, E>;
+
+		fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+			formatter.write_str("a string")
+		}
+		fn visit_borrowed_str<ER>(self, v: &'de str) -> Result<Self::Value, ER>
+		where
+			ER: serde::de::Error,
+		{
+			match BStr::from_str(v) {
+				Ok(b) => Ok(b),
+				Err(_e) => Err(serde::de::Error::invalid_length(
+					v.len(),
+					&format!("{MAX}").as_str(),
+				)),
+			}
+		}
+	}
+	impl<'de, E: Encoding, const MAX: usize> Deserialize<'de> for &'de BStr<MAX, E> {
+		fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+		where
+			D: serde::Deserializer<'de>,
+		{
+			deserializer.deserialize_str(BStrVisitor(PhantomData))
+		}
+	}
+}
